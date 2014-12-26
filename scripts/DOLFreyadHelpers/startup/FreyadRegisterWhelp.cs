@@ -21,6 +21,7 @@ using System;
 using DOL.Events;
 using DOL.GS;
 using DOL.Database;
+using DOL.GS.ServerProperties;
 
 namespace DOLFreyadHelpers
 {
