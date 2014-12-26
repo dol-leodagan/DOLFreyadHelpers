@@ -18,13 +18,64 @@
  */
 using System;
 
-namespace DOLFreyadHelpers.scripts.DOLFreyadHelpers.dataobject
+using DOL.Database;
+using DOL.Database.Attributes;
+
+namespace DOLFreyadHelpers
 {
 	/// <summary>
 	/// AccountXHelperRegister Table Holding Helper Registration Records
 	/// </summary>
-	public class AccountXHelperRegister
+	[DataTable(TableName="AccountXHelperRegister")]
+	public class AccountXHelperRegister : DataObject
 	{
+		protected string m_accountName;
+		
+		/// <summary>
+		/// DOL Account Name Link
+		/// </summary>
+		[PrimaryKey]
+		public string AccountName {
+			get { return m_accountName; }
+			set { Dirty = true; m_accountName = value; }
+		}
+		
+		protected string m_externalAccount;
+		
+		/// <summary>
+		/// External Account Identifier
+		/// </summary>
+		[DataElement(Varchar = 255, AllowDbNull = false, Index = true)]
+		public string ExternalAccount {
+			get { return m_externalAccount; }
+			set { Dirty = true; m_externalAccount = value; }
+		}
+		
+		protected bool m_validated;
+		
+		/// <summary>
+		/// Validation Flag
+		/// </summary>
+		[DataElement(Varchar = 255, AllowDbNull = false, Index = true)]
+		public bool Validated {
+			get { return m_validated; }
+			set { Dirty = true; m_validated = value; }
+		}
+		
+		protected string token;
+		
+		/// <summary>
+		/// Validation Token
+		/// </summary>
+		[DataElement(Varchar = 255, AllowDbNull = false, Index = false)]
+		public string Token {
+			get { return token; }
+			set { Dirty = true; token = value; }
+		}
+
+		/// <summary>
+		/// Default Constructor
+		/// </summary>
 		public AccountXHelperRegister()
 		{
 		}
