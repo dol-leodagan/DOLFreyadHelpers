@@ -70,4 +70,12 @@
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PreBuildEvent>
+    </PreBuildEvent>
+    <PostBuildEvent Condition=" '$(OS)' != 'Unix' ">xcopy "$(ProjectDir)scripts\DOLFreyadHelpers\*" "$(SolutionDir)$(ConfigurationName)\scripts\DOLFreyadHelpers" /y /s /q /i
+</PostBuildEvent>
+    <PostBuildEvent Condition=" '$(OS)' == 'Unix' ">cd "$(ProjectDir)"; mkdir -p "$(SolutionDir)`echo $(ConfigurationName) | tr '[:upper:]' '[:lower:]'`/scripts/DOLFreyadHelpers"; find ./ | xargs -i -t cp --parents -f {} "$(SolutionDir)`echo $(ConfigurationName) | tr '[:upper:]' '[:lower:]'`/scripts/DOLFreyadHelpers";
+</PostBuildEvent>
+  </PropertyGroup>
 </Project>

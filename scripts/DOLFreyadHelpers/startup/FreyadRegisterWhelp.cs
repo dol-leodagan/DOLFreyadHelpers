@@ -22,6 +22,7 @@ using DOL.Events;
 using DOL.GS;
 using DOL.Database;
 using DOL.GS.ServerProperties;
+using DOL.AI.Brain;
 
 namespace DOLFreyadHelpers
 {
@@ -34,23 +35,31 @@ namespace DOLFreyadHelpers
 		/// <summary>
 		/// Enable or Disable the Freyad Helpers Register Scripts
 		/// </summary>
-		[ServerProperty("freyadhelpers", "helper_register_whelp_enable", "Enable or disable the Register Whelp Helper to lead Player for registration", false)]
-		public static bool helper_register_whelp_enable;
+		[ServerProperty("freyadhelpers", "helper_register_account_enable", "Enable or disable the Register Whelp Helper to lead Player for registration", false)]
+		public static bool HELPER_REGISTER_ACCOUNT_ENABLE;
+
+		/// <summary>
+		/// Enable or Disable the Freyad Helpers Register Whelp Spawning
+		/// </summary>
+		[ServerProperty("freyadhelpers", "helper_register_whelp_enable", "Enable or disable the Register Whelp Helper to lead Player for registration", true)]
+		public static bool HELPER_REGISTER_WHELP_ENABLE;
 
 		/// <summary>
 		/// Delay for Register Whelp Spawn
 		/// </summary>
 		[ServerProperty("freyadhelpers", "helper_register_whelp_spawndelay", "Delay in Millisecond after player Zoning for Register Whelp Spawning (should take zoning time into account)", 30000)]
-		public static int helper_register_whelp_spawntime;
+		public static int HELPER_REGISTER_WHELP_SPAWNTIME;
 
 		/// <summary>
 		/// Delay for Register Whelp Unspawn (Lifetime)
 		/// </summary>
-		[ServerProperty("freyadhelpers", "helper_register_whelp_unspawndelay", "Lifetime in Millisecond for Register Whelp Duration (Idle Delay)", 600000)]
-		public static int helper_register_whelp_unspawndelay;
+		[ServerProperty("freyadhelpers", "helper_register_whelp_unspawndelay", "Lifetime in Millisecond for Register Whelp Duration (Idle Delay)", 300000)]
+		public static int HELPER_REGISTER_WHELP_UNSPAWNDELAY;
 		#endregion
 
-		private const string REGISTER_WHELP_ACCOUNT_TAG = "REGISTER_WHELP_ACCOUNT_TAG";
+		public const string REGISTER_WHELP_ACCOUNT_TAG = "REGISTER_WHELP_ACCOUNT_TAG";
+		public const string REGISTER_WHELP_TIMER_TAG = "REGISTER_WHELP_TIMER_TAG";
+		public const string REGISTER_WHELP_SPAWN_TAG = "REGISTER_WHELP_SPAWN_TAG";
 		
 		/// <summary>
 		/// On Script Loading Listen to World Events.
@@ -61,13 +70,26 @@ namespace DOLFreyadHelpers
 		[ScriptLoadedEvent]
 		public static void OnScriptLoaded(DOLEvent e, object sender, EventArgs args)
 		{
-			GameEventMgr.AddHandler(GamePlayerEvent.RegionChanged, new DOLEventHandler(OnRegionEntering));
+			if (HELPER_REGISTER_ACCOUNT_ENABLE)
+			{
+				GameEventMgr.AddHandler(GamePlayerEvent.GameEntered, new DOLEventHandler(OnRegionEntering));
+				GameEventMgr.AddHandler(GamePlayerEvent.RegionChanged, new DOLEventHandler(OnRegionEntering));
+				GameEventMgr.AddHandler(GamePlayerEvent.LevelUp, new DOLEventHandler(OnRegionEntering));
+			}
 		}
 
 		[ScriptUnloadedEvent]
 		public static void OnScriptUnLoaded(DOLEvent e, object sender, EventArgs args)
 		{
-			GameEventMgr.RemoveHandler(GamePlayerEvent.RegionChanged, new DOLEventHandler(OnRegionEntering));
+			try
+			{
+				GameEventMgr.RemoveHandler(GamePlayerEvent.GameEntered, new DOLEventHandler(OnRegionEntering));
+				GameEventMgr.RemoveHandler(GamePlayerEvent.RegionChanged, new DOLEventHandler(OnRegionEntering));
+				GameEventMgr.RemoveHandler(GamePlayerEvent.LevelUp, new DOLEventHandler(OnRegionEntering));
+			}
+			catch
+			{
+			}
 		}
 		
 		/// <summary>
@@ -100,7 +122,7 @@ namespace DOLFreyadHelpers
 						acc.Validated = false;
 						acc.Token = string.Empty;
 						acc.ExternalAccount = string.Empty;
-						GameServer.Database.SaveObject(acc);
+						GameServer.Database.AddObject(acc);
 					}
 					
 					player.TempProperties.setProperty(REGISTER_WHELP_ACCOUNT_TAG, acc);
@@ -108,8 +130,21 @@ namespace DOLFreyadHelpers
 				
 				if (acc.Validated == false)
 				{
+					var currentRegion = player.CurrentRegion;
+					
+					// Check if the Timer isn't running
+					var timer = player.TempProperties.getProperty<RegionTimerAction<GamePlayer>>(REGISTER_WHELP_TIMER_TAG, null);
+					
+					if (timer != null && timer.IsAlive)
+						return;
+					
 					// Our player isn't fully validated, spawn the registration "Helper"
-					new RegionTimerAction<GamePlayer>(player, 10000, pl => { SpawnRegisterHelper(pl, acc); return 0; });
+					player.TempProperties.setProperty(REGISTER_WHELP_TIMER_TAG,
+					                                  new RegionTimerAction<GamePlayer>(player, HELPER_REGISTER_WHELP_SPAWNTIME, pl =>
+					                                                                    {
+					                                                                    	SpawnRegisterHelper(pl, acc);
+					                                                                    	pl.TempProperties.removeProperty(REGISTER_WHELP_TIMER_TAG);
+					                                                                    }));
 				}
 			}
 		}
@@ -121,8 +156,60 @@ namespace DOLFreyadHelpers
 		/// <param name="account"></param>
 		public static void SpawnRegisterHelper(GamePlayer player, AccountXHelperRegister account)
 		{
+			if (HELPER_REGISTER_WHELP_ENABLE == false)
+				return;
 			
+			// Still have a pet
+			if (player.TempProperties.getProperty<HelperWhelpNpc>(REGISTER_WHELP_SPAWN_TAG, null) != null)
+				return;
+						
+			HelperWhelpNpc npc = new HelperWhelpNpc(player, account);
+			FollowOwnerBrain brain = new FollowOwnerBrain(player);
+			Point2D spawnloc = player.GetPointFromHeading(player.Heading, 64);
+			
+			brain.IsMainPet = false;
+
+			npc.Name = "Register Whelp";
+			npc.GuildName = "Please Register !";
+			npc.Model = 678;
+			npc.X = spawnloc.X;
+			npc.Y = spawnloc.Y;
+			npc.Z = player.Z;
+			npc.CurrentRegion = player.CurrentRegion;
+			npc.Heading = (ushort)((player.Heading + 2048) % 4096);
+			npc.CurrentSpeed = 0;
+			npc.Level = 99;
+			npc.Size = 50;
+
+			npc.SetOwnBrain(brain);
+			npc.AddToWorld();
+			
+			// Register Pet Death for Owner
+			player.TempProperties.setProperty(REGISTER_WHELP_SPAWN_TAG, npc);
+			GameEventMgr.AddHandler(npc, GameLivingEvent.RemoveFromWorld, new DOLEventHandler(PetOwnerUnregister));
+			// Start Death Timer
+			new RegionTimerAction<GameNPC>(npc, HELPER_REGISTER_WHELP_UNSPAWNDELAY, obj => obj.Die(null));
 		}
 		
+		/// <summary>
+		/// Method for Unregistering Pet Owner on Whelp Unspawning
+		/// </summary>
+		/// <param name="e"></param>
+		/// <param name="sender"></param>
+		/// <param name="args"></param>
+		public static void PetOwnerUnregister(DOLEvent e, object sender, EventArgs args)
+		{
+			if (sender is HelperWhelpNpc)
+			{
+				try
+				{
+					((HelperWhelpNpc)sender).Player.TempProperties.removeProperty(REGISTER_WHELP_SPAWN_TAG);
+				}
+				finally
+				{
+					GameEventMgr.RemoveHandler(sender, GameLivingEvent.RemoveFromWorld, new DOLEventHandler(PetOwnerUnregister));
+				}
+			}
+		}
 	}
 }
