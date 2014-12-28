@@ -160,10 +160,10 @@ namespace DOLFreyadHelpers
 				return;
 			
 			// Still have a pet
-			if (player.TempProperties.getProperty<HelperWhelpNpc>(REGISTER_WHELP_SPAWN_TAG, null) != null)
+			if (player.TempProperties.getProperty<RegisterWhelpNPC>(REGISTER_WHELP_SPAWN_TAG, null) != null)
 				return;
 						
-			HelperWhelpNpc npc = new HelperWhelpNpc(player, account);
+			RegisterWhelpNPC npc = new RegisterWhelpNPC(player, account);
 			FollowOwnerBrain brain = new FollowOwnerBrain(player);
 			Point2D spawnloc = player.GetPointFromHeading(player.Heading, 64);
 			
@@ -199,11 +199,11 @@ namespace DOLFreyadHelpers
 		/// <param name="args"></param>
 		public static void PetOwnerUnregister(DOLEvent e, object sender, EventArgs args)
 		{
-			if (sender is HelperWhelpNpc)
+			if (sender is RegisterWhelpNPC)
 			{
 				try
 				{
-					((HelperWhelpNpc)sender).Player.TempProperties.removeProperty(REGISTER_WHELP_SPAWN_TAG);
+					((RegisterWhelpNPC)sender).Player.TempProperties.removeProperty(REGISTER_WHELP_SPAWN_TAG);
 				}
 				finally
 				{

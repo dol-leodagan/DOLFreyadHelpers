@@ -27,7 +27,7 @@ namespace DOLFreyadHelpers
 	/// <summary>
 	/// Helper Whelp NPC, "gentle" companion pet following player to grant help or ask for certain accomplishment.
 	/// </summary>
-	public class HelperWhelpNpc : GameNPC
+	public class RegisterWhelpNPC : GameNPC
 	{
 		private const int AVERAGE_ANIMATION_DELAY = 30000;
 		private const int SPELL_EFFECT_ID = 207;
@@ -41,14 +41,14 @@ namespace DOLFreyadHelpers
 			get { return m_player; }
 		}
 		private AccountXHelperRegister m_account;
-		private RegionTimerAction<HelperWhelpNpc> m_animationTimer;
+		private RegionTimerAction<RegisterWhelpNPC> m_animationTimer;
 
 		/// <summary>
 		/// Default Constructor Needing Player Owner and Account Object for Walkthrough to Registration.
 		/// </summary>
 		/// <param name="player">Player Followed</param>
 		/// <param name="acc">External Account Linker</param>
-		public HelperWhelpNpc(GamePlayer player, AccountXHelperRegister acc)
+		public RegisterWhelpNPC(GamePlayer player, AccountXHelperRegister acc)
 			: base()
 		{
 			m_player = player;
@@ -189,7 +189,7 @@ namespace DOLFreyadHelpers
 				if (m_animationTimer != null)
 					m_animationTimer.Stop();
 				
-				m_animationTimer = new RegionTimerAction<HelperWhelpNpc>(this, obj => AnimationCallback(obj));
+				m_animationTimer = new RegionTimerAction<RegisterWhelpNPC>(this, obj => AnimationCallback(obj));
 				m_animationTimer.Start(1);
 				return true;
 			}
@@ -202,10 +202,13 @@ namespace DOLFreyadHelpers
 		/// </summary>
 		/// <param name="source"></param>
 		/// <returns></returns>
-		private int AnimationCallback(HelperWhelpNpc source)
+		private int AnimationCallback(RegisterWhelpNPC source)
 		{
 			if (ObjectState != eObjectState.Active)
 				return AVERAGE_ANIMATION_DELAY;
+			
+			if (m_player == null || m_player.ObjectState != eObjectState.Active)
+				Die(null);
 			
 			if (m_account.Validated)
 				Die(null);
