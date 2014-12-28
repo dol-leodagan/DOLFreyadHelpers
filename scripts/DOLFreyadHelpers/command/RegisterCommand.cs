@@ -18,6 +18,7 @@
  */
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 using DOL.GS;
 using DOL.GS.Commands;
@@ -80,6 +81,10 @@ namespace DOLFreyadHelpers
 				DisplayMessage(client.Player, string.Format("You are already Registered to \"{0}\", and cannot Register again...", acc.ExternalAccount));
 				return;
 			}
+			
+			var tokenRegEx = new Regex("^[0-9]{10}$");
+			if (tokenRegEx.IsMatch(arg))
+				arg = string.Format("#{0}", arg);
 						
 			if (arg.StartsWith("#"))
 			{
